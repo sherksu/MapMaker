@@ -3,6 +3,7 @@ import Point from 'ol/geom/Point';
 import Feature from 'ol/Feature';
 import { transform } from 'ol/proj';
 import { Vector as VectorSource } from 'ol/source';
+import { calcMiddle, divideMiddle } from './calculator';
 
 const iconStyle = [
   new Style({
@@ -78,19 +79,35 @@ export default function dataProcess(file, formList) {
     }
   }
 
-  const min = Math.min(...allData);
-  const max = Math.max(...allData);
-  allData.sort();
-  const len = allData.length;
-  let middle = 0;
-  if (allData.length % 2 === 0) {
-    middle = (allData[len / 2] + allData[len / 2 - 1]) / 2;
-  } else {
-    middle = allData[parseInt(len / 2, 10)];
+  const middle = calcMiddle(allData, 2);
+  const [, , hmin, hmax, lmin, lmax] = divideMiddle(allData, middle);
+
+  return [vectorSource, hmin, hmax, lmin, lmax, middle];
+}
+
+// review first file 10 rows. -> {titledata}, {sourcedata}
+const reviewData = (file) => {
+  const column = file.data['0'].map((k, i) => {
+    return {
+      title: k,
+      dataIndex: k.toLowerCase(),
+      key: i,
+    };
+  });
+
+  let data = [];
+  for (let i = 1; i <= 10; i++) {
+    if (i !== 0 && i <= 10) {
+      const source = { key: String(i) };
+      file.data[i].forEach((f, h) => {
+        source[file.data['0'][h].toLowerCase()] = f;
+      });
+      data = [...data, source];
+    }
   }
 
-  return [vectorSource, min, max, middle];
-}
+  return [column, data];
+};
 
 // convert each JSON file(array) to feature data(array).
 const JSON2Data = (fileList, formList) => {
@@ -137,4 +154,4 @@ const JSON2Data = (fileList, formList) => {
   return dataList;
 };
 
-export { JSON2Data };
+export { JSON2Data, reviewData };

@@ -1,43 +1,36 @@
-import { Descriptions } from 'antd';
+import { Button, Descriptions } from 'antd';
 import React, { useContext, useEffect, useState } from 'react';
 import { mapContext } from '../control/mapContext';
-
-type Tinfo = {
-  name?: string;
-  mat?: string;
-  data?: number;
-};
-
-const infoInitial = {
-  name: 'unknown',
-  mat: 'unknown',
-  data: 0,
-};
+import './popup.module.scss';
 
 // control popup window
 export default function Popup() {
-  const { map, pixel, select, popup, markMode } = useContext(mapContext);
-  const [info, setInfo] = useState<Tinfo>(infoInitial);
+  const { map, pixel, popup, select } = useContext(mapContext);
+  const [info, setInfo] = useState(null);
 
   useEffect(() => {
-    if (popup && map && pixel) {
-      if (markMode) {
-        popup.setPosition(map.getCoordinateFromPixel(pixel));
-      } else if (select instanceof Array && select.length !== 0) {
-        setInfo(select[0].get('info'));
-        popup.setPosition(map.getCoordinateFromPixel(pixel));
-      } else {
-        popup.setPosition(undefined);
-      }
+    if (popup && map && pixel && select) {
+      select.on('select', (e) => {
+        if (e.selected.length !== 0) {
+          const feature = e.selected[0];
+          setInfo(feature.get('info'));
+          popup.setPosition(map.getCoordinateFromPixel(pixel));
+        } else {
+          popup.setPosition(undefined);
+        }
+      });
+      return () => select.un('select', () => {});
     }
-  }, [select, pixel, markMode]);
+    return () => {};
+  }, [select, pixel]);
 
   return (
     <div
       style={{
         backgroundColor: 'white',
-        padding: 4,
+        padding: '0.2em',
         border: '1px solid rgba(0, 0, 0, 0.2)',
+        minWidth: '60px',
       }}
     >
       {info ? (
@@ -54,9 +47,7 @@ export default function Popup() {
           <Descriptions.Item label="data">{info.data}</Descriptions.Item>
         </Descriptions>
       ) : (
-        <div>
-          <span>No info</span>
-        </div>
+        <span>No data</span>
       )}
     </div>
   );

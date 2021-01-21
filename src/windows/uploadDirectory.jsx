@@ -10,6 +10,10 @@ import {
   Form,
   Modal,
   Space,
+  Tooltip,
+  Table,
+  Divider,
+  Typography,
 } from 'antd';
 import { rainbow } from '@indot/rainbowvis';
 import { Fill, Style, Circle, Stroke, Text } from 'ol/style';
@@ -19,10 +23,11 @@ import proj4 from 'proj4';
 import { Vector as VectorLayer, Heatmap as HeatmapLayer } from 'ol/layer';
 import { UploadOutlined } from '@ant-design/icons';
 import { handleFile2JSON } from '../utils/readCSV';
-import './popup.module.scss';
 import { mapContext } from '../control/mapContext';
 import dataProcess, { JSON2Data } from '../utils/dataProcess';
 import combineByCoordinate from '../utils/combineByCoordinate';
+import { gradientPos } from '../utils/calculator';
+import { colorGradient } from '../utils/generator';
 
 export default function UploadDirectory() {
   const [file, setFile] = useState([]);
@@ -33,12 +38,17 @@ export default function UploadDirectory() {
   const singleUploadRef = useRef(null);
   const mutileUploadRef = useRef(null);
   const [fc, setFC] = useState(false);
+  const [comb, setComb] = useState(false);
+  const [columns, setCol] = useState([]);
+  const [datas, setData] = useState([]);
 
+  // register zone 0 UTM projection.
   useEffect(() => {
     proj4.defs('EPSG:32650', '+proj=utm +zone=1 +datum=WGS84 +no_defs');
     register(proj4);
   }, []);
 
+  // reset layer info when layer change.
   useEffect(() => {
     form.setFieldsValue({ combineLry: null, combineFt: null });
     setFC(false);
@@ -75,13 +85,30 @@ export default function UploadDirectory() {
 
     const column = fileJSONS[0].data['0'].map((k, i) => {
       return {
-        title: k,
+        title: `${k}: [${i}]`,
         dataIndex: k.toLowerCase(),
         key: i,
       };
     });
 
+    let data = [];
+    const maxlen =
+      fileJSONS[0].data.length - 10 > 0 ? 10 : fileJSONS[0].data.length;
+    for (let i = 1; i < maxlen; i++) {
+      if (i !== 0) {
+        const source = { key: String(i) };
+        fileJSONS[0].data[i].forEach((f, h) => {
+          source[fileJSONS[0].data['0'][h].toLowerCase()] = f;
+        });
+        data = [...data, source];
+      }
+    }
+
+    setCol(column);
+    setData(data);
     setFile(fileJSONS);
+    const mapLayers = map.getLayers().getArray();
+    setLayers([...mapLayers]);
     setModal(true);
   };
 
@@ -115,15 +142,33 @@ export default function UploadDirectory() {
 
         // const test = JSON2Data(file, form.getFieldsValue());
 
-        const [vectorSource, min, max, middle] = dataProcess(file, {
-          layerName,
-          name,
-          east,
-          north,
-          data,
-          zone,
-          showType,
-        });
+        const [vectorSource, hmin, hmax, lmin, lmax, middle] = dataProcess(
+          file,
+          {
+            layerName,
+            name,
+            east,
+            north,
+            data,
+            zone,
+            showType,
+          }
+        );
+
+        const whichType = (types) => {
+          switch (types) {
+            case 1:
+              return 'heat';
+            case 2:
+              return 'icon';
+            case 0:
+              return 'point';
+            default:
+              return 'null';
+          }
+        };
+
+        const type = whichType(showType);
 
         const heatmapLayer = new HeatmapLayer({
           source: vectorSource,
@@ -134,30 +179,46 @@ export default function UploadDirectory() {
           // gradient: ['#9bff00', '#56ae91', '#1865d6', '#be10e4', '#ff0d0d'],
           weight: (feature) => {
             let d = parseFloat(feature.get('info').data);
-            d = (d - min) / (max - min);
+            d = (d - lmin) / (hmax - lmin);
             return d;
           },
         });
 
-        const rb = rainbow()
-          .overColors('#00ffb3', '#7b6086', '#ff0d0d')
-          .withRange(0, 100);
+        const rbh = colorGradient.yellow2red;
+        const rbl = colorGradient.green2yellow;
 
         const pointLayer = new VectorLayer({
           source: vectorSource,
+          type: 'vector',
           name: layerName || fileList[0].name,
           style: (feature) => {
-            let d = parseFloat(feature.get('info').data);
-            d = ((d - min) * 100) / (max - min);
-            const colorHSL = rb.colorAt(Math.floor(d));
+            const d = parseFloat(feature.get('info').data).toFixed(2);
+            const colorHSL = gradientPos(
+              d,
+              middle,
+              hmin,
+              hmax,
+              lmin,
+              lmax,
+              rbh,
+              rbl
+            );
             return new Style({
               image: new Circle({
                 fill: new Fill({
-                  color: `#${colorHSL}`,
+                  color: colorHSL,
                 }),
                 radius: 5,
               }),
             });
+          },
+          dataed: {
+            type,
+            finalMiddle: middle,
+            hmin,
+            hmax,
+            lmin,
+            lmax,
           },
         });
 
@@ -167,7 +228,7 @@ export default function UploadDirectory() {
               .getSource()
               .getFeatureById(combineFt);
 
-            cfeature.set('info', { mat: data, data: middle.toFixed(2) });
+            cfeature.set('info', { mat: data, data: middle });
 
             const canvas = document.createElement('canvas');
             const context = canvas.getContext('2d');
@@ -197,7 +258,7 @@ export default function UploadDirectory() {
               }),
               fill: fills,
               text: new Text({
-                text: `${data}:${middle.toFixed(2)}`,
+                text: `${data}:${middle}`,
                 fill: new Fill({
                   color: 'rgb(0, 0, 0)',
                 }),
@@ -237,11 +298,24 @@ export default function UploadDirectory() {
         );
       });
 
+  const { Paragraph, Title } = Typography;
+
   return (
     <div>
-      <span>Bulk upload</span>
-      <br />
-      <Space direction="horizontal" size={0}>
+      <div>
+        <Title level={5}>Tips</Title>
+        <Paragraph>
+          <p>
+            Upload bulk of <span style={{ color: 'green' }}>.csv</span> files.
+          </p>
+          <p style={{ fontSize: '10pt', color: 'gray' }}>
+            You could either create a new layer or merge data into existed
+            layers/features.
+          </p>
+        </Paragraph>
+      </div>
+      <Divider />
+      <Space direction="horizontal" size="small">
         {singleUploadRef && (
           <Button
             icon={<UploadOutlined />}
@@ -249,7 +323,7 @@ export default function UploadDirectory() {
               singleUploadRef.current.click();
             }}
           >
-            File
+            Files
           </Button>
         )}
         {mutileUploadRef && (
@@ -284,9 +358,42 @@ export default function UploadDirectory() {
       </div>
 
       {fileList.length !== 0 && (
-        <Button type="primary" block onClick={handleMutiple}>
-          Create data layer
-        </Button>
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'row' }}>
+          <Tooltip
+            placement="bottom"
+            color="cyan"
+            title={<span style={{ fontSize: '9pt' }}>create a new layer</span>}
+          >
+            <Button
+              style={{ width: '100%', marginRight: 8 }}
+              type="primary"
+              onClick={() => {
+                handleMutiple();
+                setComb(false);
+              }}
+            >
+              Create
+            </Button>
+          </Tooltip>
+          <Tooltip
+            placement="bottom"
+            color="cyan"
+            title={
+              <span style={{ fontSize: '9pt' }}>merge into layer/feature</span>
+            }
+          >
+            <Button
+              style={{ width: '100%' }}
+              type="primary"
+              onClick={() => {
+                handleMutiple();
+                setComb(true);
+              }}
+            >
+              Combine
+            </Button>
+          </Tooltip>
+        </div>
       )}
       {file && (
         <Modal
@@ -304,23 +411,25 @@ export default function UploadDirectory() {
             layout="horizontal"
             size="small"
             form={form}
-            initialValues={{ zone: 31 }}
+            initialValues={{ zone: 1 }}
           >
-            <Form.Item
-              label="Layer name"
-              name="layerName"
-              rules={[
-                {
-                  required: true,
-                  message: 'Please input layer name.',
-                },
-              ]}
-            >
-              <Input
-                style={{ width: '40%' }}
-                placeholder="input your layer name."
-              />
-            </Form.Item>
+            {!comb && (
+              <Form.Item
+                label="Layer name"
+                name="layerName"
+                rules={[
+                  {
+                    required: true,
+                    message: 'Please input layer name.',
+                  },
+                ]}
+              >
+                <Input
+                  style={{ width: '40%' }}
+                  placeholder="input your layer name."
+                />
+              </Form.Item>
+            )}
             <Form.Item
               label="Mark name colNo."
               name="name"
@@ -367,7 +476,7 @@ export default function UploadDirectory() {
                 },
               ]}
             >
-              <InputNumber min={31} max={50} />
+              <InputNumber min={1} max={60} />
             </Form.Item>
             <Form.Item
               label="Data Col. title"
@@ -381,87 +490,111 @@ export default function UploadDirectory() {
             >
               <Input style={{ width: 200 }} />
             </Form.Item>
-            <Form.Item
-              label="Show type"
-              name="showType"
-              rules={[
-                {
-                  required: true,
-                  message: 'Please choose a show type.',
-                },
-              ]}
-            >
-              <Select
-                style={{ width: 100 }}
-                placeholder="type"
-                onChange={(val) => {
-                  form.setFieldsValue({ showType: val });
-                }}
-              >
-                <Select.Option value={0} key={0}>
-                  Point
-                </Select.Option>
-                <Select.Option value={1} key={1}>
-                  Heat
-                </Select.Option>
-                <Select.Option value={2} key={2}>
-                  Icon
-                </Select.Option>
-              </Select>
-            </Form.Item>
-            <Form.Item
-              label="Combine to"
-              name="combineLry"
-              help="The data will merge into feature according coordinate(some data will be discarded)."
-            >
-              <Select
-                style={{ width: 200 }}
-                placeholder="layer"
-                onChange={(val) => {
-                  form.setFieldsValue({ combineLry: val });
-                  if (val) setFC(val);
-                }}
-                onClear={() => {
-                  setFC(false);
-                  form.setFieldsValue({ combineLry: null });
-                }}
-                allowClear
-              >
-                {layers.map((layer) => {
-                  if (layer.get('name') !== 'default') {
-                    return (
-                      <Select.Option value={layer.ol_uid} key={layer.ol_uid}>
-                        {layer.get('name')}
-                      </Select.Option>
-                    );
-                  }
-                  return null;
-                })}
-              </Select>
-            </Form.Item>
-            {fc && (
+            {!comb && (
               <Form.Item
-                label="(Option) feautre"
-                name="combineFt"
-                help="The data will merge into feature completely."
+                label="Show type"
+                name="showType"
+                rules={[
+                  {
+                    required: true,
+                    message: 'Please choose a show type.',
+                  },
+                ]}
               >
                 <Select
-                  style={{ width: 200 }}
-                  placeholder="feature"
-                  onChange={(val, e) => {
-                    form.setFieldsValue({ combineFt: e.key });
+                  style={{ width: 100 }}
+                  placeholder="type"
+                  onChange={(val) => {
+                    form.setFieldsValue({ showType: val });
                   }}
-                  onClear={() => {
-                    form.setFieldsValue({ combineFt: null });
-                  }}
-                  allowClear
-                  showSearch
                 >
-                  {featureList}
+                  <Select.Option value={0} key={0}>
+                    Point
+                  </Select.Option>
+                  <Select.Option value={1} key={1}>
+                    Heat
+                  </Select.Option>
+                  <Select.Option value={2} key={2}>
+                    Icon
+                  </Select.Option>
                 </Select>
               </Form.Item>
             )}
+            {comb && (
+              <>
+                <Form.Item
+                  label="Combine to"
+                  name="combineLry"
+                  help="The data will merge into feature according coordinate(some data will be discarded)."
+                  rules={[
+                    {
+                      required: true,
+                      message: 'Please choose a layer.',
+                    },
+                  ]}
+                >
+                  <Select
+                    style={{ width: 200 }}
+                    placeholder="layer"
+                    onChange={(val) => {
+                      form.setFieldsValue({ combineLry: val });
+                      if (val) setFC(val);
+                    }}
+                    onClear={() => {
+                      setFC(false);
+                      form.setFieldsValue({ combineLry: null });
+                    }}
+                    allowClear
+                  >
+                    {layers.map((layer) => {
+                      if (layer.get('name') !== 'default') {
+                        return (
+                          <Select.Option
+                            value={layer.ol_uid}
+                            key={layer.ol_uid}
+                          >
+                            {layer.get('name')}
+                          </Select.Option>
+                        );
+                      }
+                      return null;
+                    })}
+                  </Select>
+                </Form.Item>
+                {fc && (
+                  <Form.Item
+                    label="(Option) feautre"
+                    name="combineFt"
+                    help="The data will merge into feature completely."
+                  >
+                    <Select
+                      style={{ width: 200 }}
+                      placeholder="feature"
+                      onChange={(val, e) => {
+                        form.setFieldsValue({ combineFt: e.key });
+                      }}
+                      onClear={() => {
+                        form.setFieldsValue({ combineFt: null });
+                      }}
+                      allowClear
+                      showSearch
+                    >
+                      {featureList}
+                    </Select>
+                  </Form.Item>
+                )}
+              </>
+            )}
           </Form>
+          <Table
+            footer={() => 'Sample of first file data'}
+            columns={columns}
+            dataSource={datas.slice(0, 5)}
+            size="small"
+            bordered
+            scroll={{ x: 'max-content' }}
+            pagination={false}
+          />
         </Modal>
       )}
     </div>

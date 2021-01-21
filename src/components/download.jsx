@@ -1,8 +1,9 @@
-import { Button } from 'antd';
+import { Button, Tooltip } from 'antd';
 import React, { useContext } from 'react';
+import { SaveOutlined } from '@ant-design/icons';
 import { mapContext } from '../control/mapContext';
 
-export default function DownlaodMap() {
+export default function DownloadMap() {
   const { map } = useContext(mapContext);
 
   const handleDownload = () => {
@@ -42,11 +43,15 @@ export default function DownlaodMap() {
     }
   };
   return (
-    <div>
-      <Button type="primary" onClick={handleDownload}>
-        Export Map
-      </Button>
+    <Tooltip title="Export Map" placement="left" color="green">
+      <Button
+        type="primary"
+        shape="circle"
+        size="large"
+        icon={<SaveOutlined />}
+        onClick={handleDownload}
+      />
       <a id="image-download" download="map.png" style={{ display: 'none' }} />
-    </div>
+    </Tooltip>
   );
 }

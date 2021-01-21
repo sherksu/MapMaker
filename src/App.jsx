@@ -2,8 +2,8 @@ import React from 'react';
 import MapProvider from './control/mapContext';
 import PointInfo from './components/pointInfo';
 import Popup from './components/popup';
-import DownlaodMap from './windows/download';
-import ColPanel from './components/collapsePanel';
+import ToolBar from './components/toolbar';
+import LayerPannel from './windows/layerPannel';
 
 export default function App() {
   return (
@@ -13,15 +13,15 @@ export default function App() {
       </div>
       <div id="mapLayer">
         <div id="map" />
-        <div id="tool">
-          <DownlaodMap />
-        </div>
         <div id="tip">
           <PointInfo />
         </div>
       </div>
-      <div id="operator">
-        <ColPanel />
+      <div className="operator">
+        <ToolBar />
+      </div>
+      <div id="layerPanel">
+        <LayerPannel />
       </div>
     </MapProvider>
   );

@@ -37,31 +37,15 @@ export default function UploadPannel() {
     }
   };
 
-  const styles = {
-    Polygon: new Style({
-      stroke: new Stroke({
-        color: 'rgba(100, 100, 100, 0.1)',
-        width: 1,
-      }),
-      fill: new Fill({
-        color: 'rgba(255, 255, 255, 0.2)',
-      }),
+  const styles = new Style({
+    stroke: new Stroke({
+      color: 'rgba(100, 100, 100, 0.1)',
+      width: 1,
     }),
-
-    MultiPolygon: new Style({
-      stroke: new Stroke({
-        color: 'rgba(100, 100, 100, 0.1)',
-        width: 1,
-      }),
-      fill: new Fill({
-        color: 'rgba(255, 255, 255, 0.2)',
-      }),
+    fill: new Fill({
+      color: 'rgba(255, 255, 255, 0.2)',
     }),
-  };
-
-  const styleFunction = (feature) => {
-    return styles[feature.getGeometry().getType()];
-  };
+  });
 
   const addVector = () => {
     if (map && file) {
@@ -78,8 +62,9 @@ export default function UploadPannel() {
 
       const vectorLayer = new VectorLayer({
         source: vectorSource,
-        style: styleFunction,
+        style: styles,
         name: fileName || 'new layer',
+        type: 'vector',
       });
 
       map.addLayer(vectorLayer);
@@ -108,7 +93,8 @@ export default function UploadPannel() {
               could download{' '}
               <Link
                 href="none"
-                onClick={() => {
+                onClick={(e) => {
+                  e.preventDefault();
                   shell.openExternal('https://geojson-maps.ash.ms/');
                 }}
               >
@@ -117,7 +103,8 @@ export default function UploadPannel() {
               , or{' '}
               <Link
                 href="none"
-                onClick={() => {
+                onClick={(e) => {
+                  e.preventDefault();
                   shell.openExternal('https://geojson.io/');
                 }}
               >
@@ -161,7 +148,7 @@ export default function UploadPannel() {
               <List.Item>
                 <Text
                   editable={{
-                    maxLength: 20,
+                    maxLength: 15,
                     tooltip: 'change layer name',
                     onChange: (txt) => {
                       const f = file;

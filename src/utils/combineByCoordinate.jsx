@@ -1,4 +1,4 @@
-import { calcMiddle, divideMiddle, normalizeData } from './calculator';
+import { calcMiddle, divideMiddle, gradientPos, normalizeData } from './calculator';
 import featureStyles from './featureStyles';
 import { colorGradient } from './generator';
 
@@ -30,29 +30,35 @@ export default function combineByCoordinate(layer, vectorSource, matname) {
   const rbh = colorGradient.yellow2red;
   const rbl = colorGradient.green2yellow;
 
-  function gradientPos(data) {
-    let colorhex = '';
-    if (data - finalMiddle > 0) {
-      const pos = normalizeData(data, hmin, hmax, 2);
-      colorhex = rbh.rgbAt(pos).toHexString();
-    } else {
-      const pos = normalizeData(data, lmin, lmax, 2);
-      colorhex = rbl.rgbAt(pos).toHexString();
-    }
-    return colorhex;
-  }
-
   layer.getSource().forEachFeature((feature) => {
     const fname = feature.getId();
     if (dataMap[fname]) {
       const middle = dataMap[fname];
+      const colorHSL = gradientPos(
+        middle,
+        finalMiddle,
+        hmin,
+        hmax,
+        lmin,
+        lmax,
+        rbh,
+        rbl
+      );
       feature.set('info', { mat: matname, data: middle });
-      const colorHSL = gradientPos(middle);
       const style = featureStyles.coloredwithText(
         colorHSL,
         `${matname}:${middle}`
       );
       feature.setStyle(style);
     }
+  });
+
+  layer.set('dataed', {
+    type: 'location',
+    finalMiddle,
+    hmin,
+    hmax,
+    lmin,
+    lmax,
   });
 }

@@ -15,6 +15,13 @@ const featureStyles = {
         }),
       }),
     }),
+  selectStyle: new Style({
+    stroke: new Stroke({
+      color: '#1273DE',
+      width: 1.5,
+    }),
+    fill: new Fill({ color: 'rgba(18, 115, 222, 0.15)' }),
+  }),
 };
 
 export default featureStyles;

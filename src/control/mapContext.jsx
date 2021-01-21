@@ -2,7 +2,9 @@ import React, { createContext, useEffect, useState } from 'react';
 import { Map, View } from 'ol';
 import TileLayer from 'ol/layer/Tile';
 import OSM from 'ol/source/OSM';
+import Select from 'ol/interaction/Select';
 import Overlay from 'ol/Overlay';
+import featureStyles from '../utils/featureStyles';
 
 const mapContext = createContext(null);
 
@@ -22,6 +24,8 @@ const MapProvider = (props) => {
           source: new OSM(),
           className: 'ol-layer grey-map',
           name: 'default',
+          zIndex: 0,
+          type: 'default',
         }),
       ],
       view: new View({
@@ -31,8 +35,11 @@ const MapProvider = (props) => {
       controls: [],
     };
     const mapObject = new Map(options);
-    setMap(mapObject);
-    setLayers(mapObject.getLayers().getArray());
+
+    const selectClick = new Select({ style: featureStyles.selectStyle });
+    mapObject.addInteraction(selectClick);
+
+    setSelect(selectClick);
 
     const el = document.getElementById('popup');
 
@@ -48,6 +55,10 @@ const MapProvider = (props) => {
     mapObject.on('click', (evt) => {
       setPixel(evt.pixel);
     });
+
+    setMap(mapObject);
+    setLayers(mapObject.getLayers().getArray());
+
     return () => mapObject.setTarget(undefined);
   }, []);
 

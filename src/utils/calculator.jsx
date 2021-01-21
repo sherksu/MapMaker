@@ -31,4 +31,16 @@ const normalizeData = (data, min, max, digit) => {
   return d.toFixed(digit);
 };
 
-export { calcMiddle, divideMiddle, normalizeData };
+function gradientPos(data, finalMiddle, hmin, hmax, lmin, lmax, rbh, rbl) {
+  let colorhex = '';
+  if (data - finalMiddle > 0) {
+    const pos = normalizeData(data, hmin, hmax, 2);
+    colorhex = rbh.rgbAt(pos).toHexString();
+  } else {
+    const pos = normalizeData(data, lmin, lmax, 2);
+    colorhex = rbl.rgbAt(pos).toHexString();
+  }
+  return colorhex;
+}
+
+export { calcMiddle, divideMiddle, normalizeData, gradientPos };

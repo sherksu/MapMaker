@@ -23,7 +23,7 @@ import {
 import { UploadOutlined } from '@ant-design/icons';
 import { handleFile2JSON } from '../utils/readCSV';
 import { mapContext } from '../control/mapContext';
-import UploadDirectory from '../components/uploadDirectory';
+import UploadDirectory from './uploadDirectory';
 
 export default function DataPannel() {
   const [file, setFile] = useState(null);
@@ -65,15 +65,15 @@ export default function DataPannel() {
       });
 
       let data = [];
-      file.data.forEach((k, i) => {
-        if (i !== 0) {
+      for (let i = 1; i <= 10; i++) {
+        if (i !== 0 && i <= 10) {
           const source = { key: String(i) };
           file.data[i].forEach((f, h) => {
             source[file.data['0'][h].toLowerCase()] = f;
           });
           data = [...data, source];
         }
-      });
+      }
 
       setCol(column);
       setData(data);
@@ -149,11 +149,12 @@ export default function DataPannel() {
             item[data] !== 'bdl' &&
             item[data] !== 'na'
           ) {
-            const lonlat = transform(
+            let lonlat = transform(
               [parseFloat(item[east]), parseFloat(item[north])],
               'EPSG:32650',
               'EPSG:4326'
             );
+            lonlat = [lonlat[0] + (zone - 1) * 6, lonlat[1]];
 
             const datap = item[data].indexOf('<') !== -1 ? 0.1 : item[data];
 
