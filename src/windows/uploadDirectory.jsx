@@ -15,7 +15,6 @@ import {
   Divider,
   Typography,
 } from 'antd';
-import { rainbow } from '@indot/rainbowvis';
 import { Fill, Style, Circle, Stroke, Text } from 'ol/style';
 import { register } from 'ol/proj/proj4';
 import { DEVICE_PIXEL_RATIO } from 'ol/has';
@@ -266,6 +265,7 @@ export default function UploadDirectory() {
             });
 
             cfeature.setStyle(style);
+            findLayer(combineLry).set('dataed', { type: 'feature' });
           } else {
             combineByCoordinate(findLayer(combineLry), vectorSource, data);
           }

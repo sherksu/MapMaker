@@ -1,6 +1,6 @@
+/* eslint-disable react/prop-types */
 import { Space } from 'antd';
 import React, { useContext, useRef, useState } from 'react';
-import ReactDom from 'react-dom';
 import { useDrag, useDrop } from 'react-dnd';
 import Icon, {
   EyeOutlined,
@@ -52,7 +52,7 @@ export default function DragableItem({
   setRefresh,
   setStyleDrawer,
 }) {
-  const { map, setLayers, layers } = useContext(mapContext);
+  const { map } = useContext(mapContext);
   const ref = useRef(null);
   const [, drop] = useDrop({
     accept: ItemTypes.CARD,
@@ -122,6 +122,7 @@ export default function DragableItem({
               component={DeleteOutlined}
               onClick={() => {
                 map.removeLayer(layer);
+                setStyleDrawer(null);
                 setRefresh(!refresh);
               }}
             />

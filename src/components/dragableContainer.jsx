@@ -1,9 +1,19 @@
 import { Drawer } from 'antd';
 import React, { useState, useCallback, useContext, useEffect } from 'react';
 import update from 'react-addons-update';
+import { CloseOutlined } from '@ant-design/icons';
 import { mapContext } from '../control/mapContext';
-import StylePannel, { VectorLryStyle } from '../windows/stylePannel';
+import {
+  DefaultStyles,
+  HeatStyle,
+  VectorLryStyle,
+} from '../windows/stylePannel';
 import DragableItem from './dragbleItem';
+
+const drawerStyle = {
+  position: 'relative',
+  height: '100vh',
+};
 
 const DragableContainer = () => {
   const { map, layers, setLayers } = useContext(mapContext);
@@ -38,9 +48,9 @@ const DragableContainer = () => {
   const styleShow = (type) => {
     switch (type) {
       case 'default':
-        return <div>default</div>;
+        return <DefaultStyles layer={styleDrawer} />;
       case 'heat':
-        return <div>heat</div>;
+        return <HeatStyle layer={styleDrawer} />;
       case 'vector':
         return <VectorLryStyle layer={styleDrawer} />;
       default:
@@ -75,14 +85,19 @@ const DragableContainer = () => {
           .map((card, i) => renderCard(card, i))}
       </div>
       <Drawer
-        title="Style Edit"
+        title={<span style={{ color: 'white' }}>Style Edit</span>}
+        headerStyle={{ padding: '1rem', background: '#faad14' }}
         placement="left"
         mask={false}
         onClose={() => {
           setStyleDrawer(null);
         }}
+        closeIcon={<CloseOutlined style={{ color: 'white' }} />}
         visible={styleDrawer}
+        bodyStyle={{ padding: '1rem' }}
+        style={drawerStyle}
         key="left"
+        getContainer={document.getElementById('stylePanel')}
       >
         {styleDrawer && styleShow(styleDrawer.get('type'))}
       </Drawer>

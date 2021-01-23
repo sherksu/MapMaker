@@ -27,7 +27,7 @@ export default function Popup() {
   return (
     <div
       style={{
-        backgroundColor: 'white',
+        backgroundColor: info ? 'white' : '#FF5252',
         padding: '0.2em',
         border: '1px solid rgba(0, 0, 0, 0.2)',
         minWidth: '60px',
@@ -47,7 +47,7 @@ export default function Popup() {
           <Descriptions.Item label="data">{info.data}</Descriptions.Item>
         </Descriptions>
       ) : (
-        <span>No data</span>
+        <span style={{ color: 'white' }}>No data</span>
       )}
     </div>
   );

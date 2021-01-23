@@ -1,4 +1,9 @@
-import { calcMiddle, divideMiddle, gradientPos, normalizeData } from './calculator';
+import {
+  calcMiddle,
+  divideMiddle,
+  gradientPos,
+  normalizeData,
+} from './calculator';
 import featureStyles from './featureStyles';
 import { colorGradient } from './generator';
 

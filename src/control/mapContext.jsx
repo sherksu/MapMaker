@@ -1,10 +1,11 @@
+/* eslint-disable react/destructuring-assignment */
+/* eslint-disable react/prop-types */
 import React, { createContext, useEffect, useState } from 'react';
 import { Map, View } from 'ol';
 import TileLayer from 'ol/layer/Tile';
 import OSM from 'ol/source/OSM';
 import Select from 'ol/interaction/Select';
 import Overlay from 'ol/Overlay';
-import featureStyles from '../utils/featureStyles';
 
 const mapContext = createContext(null);
 
@@ -36,7 +37,7 @@ const MapProvider = (props) => {
     };
     const mapObject = new Map(options);
 
-    const selectClick = new Select({ style: featureStyles.selectStyle });
+    const selectClick = new Select();
     mapObject.addInteraction(selectClick);
 
     setSelect(selectClick);

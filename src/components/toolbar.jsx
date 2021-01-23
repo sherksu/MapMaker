@@ -12,8 +12,8 @@ export default function ToolBar() {
   };
 
   return (
-    <div>
-      <Space size="middle" direction="vertical">
+    <Space direction="horizontal" style={{ alignItems: 'end' }} size={15}>
+      <Space size="middle" direction="vertical" style={{ marginTop: 15 }}>
         <Tooltip title="Load Data" placement="left" color="green">
           <Button
             type="primary"
@@ -26,6 +26,6 @@ export default function ToolBar() {
         <DownloadMap />
       </Space>
       <ColPanel visible={visible} setVisible={setVisible} />
-    </div>
+    </Space>
   );
 }
