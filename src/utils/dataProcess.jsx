@@ -82,7 +82,7 @@ export default function dataProcess(file, formList) {
   const middle = calcMiddle(allData, 2);
   const [, , hmin, hmax, lmin, lmax] = divideMiddle(allData, middle);
 
-  return [vectorSource, hmin, hmax, lmin, lmax, middle];
+  return [vectorSource, hmin, hmax, lmin, lmax, middle, allData];
 }
 
 // review first file 10 rows. -> {titledata}, {sourcedata}

@@ -92,6 +92,7 @@ const DataStyles = ({ data, layer }) => {
     new Text({
       fill: new Fill({ color: '#000000' }),
       scale: [1, 1],
+      backgroundFill: new Fill({ color: '#ffffff' })
     })
   );
   const [colors, setColors] = useState({
@@ -136,6 +137,7 @@ const DataStyles = ({ data, layer }) => {
           styles.setStroke(fstrok);
           styles.getText().setFill(ftext.getFill());
           styles.getText().setScale(ftext.getScale());
+          styles.getText().setBackgroundFill(ftext.getBackgroundFill());
         }
       });
     layer.changed();
@@ -240,6 +242,14 @@ const DataStyles = ({ data, layer }) => {
             }}
           />
         </Descriptions.Item>
+        <Descriptions.Item label="bgcolor">
+          <ColorPickerOnly
+            initColor={ftext.getBackgroundFill().getColor()}
+            setting={(color) =>
+              ftext.getBackgroundFill().setColor(color.toRgbString())
+            }
+          />
+        </Descriptions.Item>
       </Descriptions>
       <Button type="primary" block onClick={handleChange}>
         Change
@@ -257,6 +267,12 @@ const ImageStyles = ({ data, layer }) => {
     c2: '#fcdc00',
     c3: '#ff1515',
   });
+  const [fstrok] = useState(
+    new Stroke({
+      color: '#000000',
+      width: 1,
+    })
+  );
 
   const review = (cl) => {
     const colorHex = colorGradient.createTwo(cl).view.css();
@@ -291,6 +307,7 @@ const ImageStyles = ({ data, layer }) => {
           fill: new Fill({
             color: colorHSL,
           }),
+          stroke: fstrok,
           radius,
         }),
       });
@@ -361,6 +378,32 @@ const ImageStyles = ({ data, layer }) => {
             value={radius}
             onChange={(val) => {
               setRadius(val);
+            }}
+          />
+        </Descriptions.Item>
+      </Descriptions>
+      <Descriptions
+        className="optionDes"
+        title="Circle Stroke"
+        bordered
+        column={1}
+        labelStyle={tieStyle}
+        contentStyle={tieStyle}
+      >
+        <Descriptions.Item label="color">
+          <ColorPickerOnly
+            initColor={fstrok.getColor()}
+            setting={(color) => fstrok.setColor(color.toRgbString())}
+          />
+        </Descriptions.Item>
+        <Descriptions.Item label="width">
+          <InputNumber
+            size="small"
+            min={1}
+            max={10}
+            defaultValue={fstrok.getWidth()}
+            onChange={(val) => {
+              fstrok.setWidth(val);
             }}
           />
         </Descriptions.Item>

@@ -23,9 +23,9 @@ import { Vector as VectorLayer, Heatmap as HeatmapLayer } from 'ol/layer';
 import { UploadOutlined } from '@ant-design/icons';
 import { handleFile2JSON } from '../utils/readCSV';
 import { mapContext } from '../control/mapContext';
-import dataProcess, { JSON2Data } from '../utils/dataProcess';
+import dataProcess from '../utils/dataProcess';
 import combineByCoordinate from '../utils/combineByCoordinate';
-import { gradientPos } from '../utils/calculator';
+import { calcMiddle, divideMiddle, gradientPos } from '../utils/calculator';
 import { colorGradient } from '../utils/generator';
 
 export default function UploadDirectory() {
@@ -55,8 +55,10 @@ export default function UploadDirectory() {
 
   const uploadProps = {
     beforeUpload: (f) => {
-      if (f.type !== 'application/vnd.ms-excel') {
-        message.error(`${f.name} is not a csv file`);
+      const sub = f.path.indexOf('.');
+      const typ = f.path.substr(sub + 1);
+      if (typ !== 'csv') {
+        message.error(`.${typ} is not a csv file`);
       }
       const nameList = fileList.map((x) => x.name);
       if (nameList.indexOf(f.name) !== -1) {
@@ -139,20 +141,23 @@ export default function UploadDirectory() {
           combineFt,
         } = form.getFieldsValue();
 
-        // const test = JSON2Data(file, form.getFieldsValue());
-
-        const [vectorSource, hmin, hmax, lmin, lmax, middle] = dataProcess(
-          file,
-          {
-            layerName,
-            name,
-            east,
-            north,
-            data,
-            zone,
-            showType,
-          }
-        );
+        const [
+          vectorSource,
+          hmin,
+          hmax,
+          lmin,
+          lmax,
+          middle,
+          allData,
+        ] = dataProcess(file, {
+          layerName,
+          name,
+          east,
+          north,
+          data,
+          zone,
+          showType,
+        });
 
         const whichType = (types) => {
           switch (types) {
@@ -169,65 +174,62 @@ export default function UploadDirectory() {
 
         const type = whichType(showType);
 
-        const heatmapLayer = new HeatmapLayer({
-          source: vectorSource,
-          name: layerName || fileList[0].name,
-          type: 'heat',
-          blur: 6,
-          radius: 8,
-          // gradient: ['#9bff00', '#56ae91', '#1865d6', '#be10e4', '#ff0d0d'],
-          weight: (feature) => {
-            let d = parseFloat(feature.get('info').data);
-            d = (d - lmin) / (hmax - lmin);
-            return d;
-          },
-        });
-
         const rbh = colorGradient.yellow2red;
         const rbl = colorGradient.green2yellow;
 
-        const pointLayer = new VectorLayer({
-          source: vectorSource,
-          type: 'vector',
-          name: layerName || fileList[0].name,
-          style: (feature) => {
-            const d = parseFloat(feature.get('info').data).toFixed(2);
-            const colorHSL = gradientPos(
-              d,
-              middle,
-              hmin,
-              hmax,
-              lmin,
-              lmax,
-              rbh,
-              rbl
-            );
-            return new Style({
-              image: new Circle({
-                fill: new Fill({
-                  color: colorHSL,
-                }),
-                radius: 5,
-              }),
-            });
-          },
-          dataed: {
-            type,
-            finalMiddle: middle,
-            hmin,
-            hmax,
-            lmin,
-            lmax,
-          },
-        });
-
         if (combineLry) {
-          if (combineFt) {
+          if (!comb) {
+            const cLry = findLayer(combineLry);
+            cLry.getSource().addFeatures(vectorSource.getFeatures());
+            const all = cLry
+              .getSource()
+              .getFeatures()
+              .map((f) => f.get('info').data);
+            const mid = calcMiddle(all, 2);
+            const [, , hmins, hmaxs, lmins, lmaxs] = divideMiddle(all, mid);
+            cLry.setStyle((feature) => {
+              const d = parseFloat(feature.get('info').data).toFixed(2);
+              const colorHSL = gradientPos(
+                d,
+                mid,
+                hmins,
+                hmaxs,
+                lmins,
+                lmaxs,
+                rbh,
+                rbl
+              );
+              return new Style({
+                image: new Circle({
+                  fill: new Fill({
+                    color: colorHSL,
+                  }),
+                  radius: 5,
+                }),
+              });
+            });
+            cLry.set('dataed', {
+              type,
+              finalMiddle: mid,
+              hmin: hmins,
+              hmax: hmaxs,
+              lmin: lmins,
+              lmax: lmaxs,
+            });
+          } else if (combineFt) {
             const cfeature = findLayer(combineLry)
               .getSource()
               .getFeatureById(combineFt);
 
-            cfeature.set('info', { mat: data, data: middle });
+            let middata = 0;
+            if (cfeature.get('info')) {
+              const all = cfeature.get('info').datas.concat(allData);
+              middata = calcMiddle(all, 2);
+              cfeature.set('info', { mat: data, data: middata, datas: all });
+            } else {
+              middata = middle;
+              cfeature.set('info', { mat: data, data: middle, datas: allData });
+            }
 
             const canvas = document.createElement('canvas');
             const context = canvas.getContext('2d');
@@ -257,7 +259,7 @@ export default function UploadDirectory() {
               }),
               fill: fills,
               text: new Text({
-                text: `${data}:${middle}`,
+                text: `${data}:${middata}`,
                 fill: new Fill({
                   color: 'rgb(0, 0, 0)',
                 }),
@@ -270,8 +272,55 @@ export default function UploadDirectory() {
             combineByCoordinate(findLayer(combineLry), vectorSource, data);
           }
         } else if (showType === 1) {
+          const heatmapLayer = new HeatmapLayer({
+            source: vectorSource,
+            name: layerName || fileList[0].name,
+            type: 'heat',
+            blur: 6,
+            radius: 8,
+            // gradient: ['#9bff00', '#56ae91', '#1865d6', '#be10e4', '#ff0d0d'],
+            weight: (feature) => {
+              let d = parseFloat(feature.get('info').data);
+              d = (d - lmin) / (hmax - lmin);
+              return d;
+            },
+          });
           map.addLayer(heatmapLayer);
         } else {
+          const pointLayer = new VectorLayer({
+            source: vectorSource,
+            type: 'vector',
+            name: layerName || fileList[0].name,
+            style: (feature) => {
+              const d = parseFloat(feature.get('info').data).toFixed(2);
+              const colorHSL = gradientPos(
+                d,
+                middle,
+                hmin,
+                hmax,
+                lmin,
+                lmax,
+                rbh,
+                rbl
+              );
+              return new Style({
+                image: new Circle({
+                  fill: new Fill({
+                    color: colorHSL,
+                  }),
+                  radius: 5,
+                }),
+              });
+            },
+            dataed: {
+              type,
+              finalMiddle: middle,
+              hmin,
+              hmax,
+              lmin,
+              lmax,
+            },
+          });
           map.addLayer(pointLayer);
         }
 
@@ -372,7 +421,7 @@ export default function UploadDirectory() {
                 setComb(false);
               }}
             >
-              Create
+              Point/Heat
             </Button>
           </Tooltip>
           <Tooltip
@@ -390,7 +439,7 @@ export default function UploadDirectory() {
                 setComb(true);
               }}
             >
-              Combine
+              Prov/Country
             </Button>
           </Tooltip>
         </div>
@@ -514,76 +563,73 @@ export default function UploadDirectory() {
                   <Select.Option value={1} key={1}>
                     Heat
                   </Select.Option>
-                  <Select.Option value={2} key={2}>
-                    Icon
-                  </Select.Option>
                 </Select>
               </Form.Item>
             )}
-            {comb && (
-              <>
-                <Form.Item
-                  label="Combine to"
-                  name="combineLry"
-                  help="The data will merge into feature according coordinate(some data will be discarded)."
-                  rules={[
-                    {
-                      required: true,
-                      message: 'Please choose a layer.',
-                    },
-                  ]}
+            <Form.Item
+              label="Combine to"
+              name="combineLry"
+              help={
+                comb
+                  ? 'The data will merge into feature according coordinate(some data will be discarded).'
+                  : 'Featrues will combine into existed layer.'
+              }
+              rules={
+                comb && [
+                  {
+                    required: true,
+                    message: 'Please choose a layer.',
+                  },
+                ]
+              }
+            >
+              <Select
+                style={{ width: 200 }}
+                placeholder="layer"
+                onChange={(val) => {
+                  form.setFieldsValue({ combineLry: val });
+                  if (val) setFC(val);
+                }}
+                onClear={() => {
+                  setFC(false);
+                  form.setFieldsValue({ combineLry: null });
+                }}
+                allowClear
+              >
+                {layers.map((layer) => {
+                  if (layer.get('type') === 'vector') {
+                    return (
+                      <Select.Option value={layer.ol_uid} key={layer.ol_uid}>
+                        {layer.get('name')}
+                      </Select.Option>
+                    );
+                  }
+
+                  return null;
+                })}
+              </Select>
+            </Form.Item>
+            {fc && comb && (
+              <Form.Item
+                label="(Option) feautre"
+                name="combineFt"
+                help="The data will merge into feature completely."
+              >
+                <Select
+                  style={{ width: 200 }}
+                  placeholder="feature"
+                  onChange={(val, e) => {
+                    form.setFieldsValue({ combineFt: e.key });
+                  }}
+                  onClear={() => {
+                    form.setFieldsValue({ combineFt: null });
+                  }}
+                  allowClear
+                  showSearch
                 >
-                  <Select
-                    style={{ width: 200 }}
-                    placeholder="layer"
-                    onChange={(val) => {
-                      form.setFieldsValue({ combineLry: val });
-                      if (val) setFC(val);
-                    }}
-                    onClear={() => {
-                      setFC(false);
-                      form.setFieldsValue({ combineLry: null });
-                    }}
-                    allowClear
-                  >
-                    {layers.map((layer) => {
-                      if (layer.get('name') !== 'default') {
-                        return (
-                          <Select.Option
-                            value={layer.ol_uid}
-                            key={layer.ol_uid}
-                          >
-                            {layer.get('name')}
-                          </Select.Option>
-                        );
-                      }
-                      return null;
-                    })}
-                  </Select>
-                </Form.Item>
-                {fc && (
-                  <Form.Item
-                    label="(Option) feautre"
-                    name="combineFt"
-                    help="The data will merge into feature completely."
-                  >
-                    <Select
-                      style={{ width: 200 }}
-                      placeholder="feature"
-                      onChange={(val, e) => {
-                        form.setFieldsValue({ combineFt: e.key });
-                      }}
-                      onClear={() => {
-                        form.setFieldsValue({ combineFt: null });
-                      }}
-                      allowClear
-                      showSearch
-                    >
-                      {featureList}
-                    </Select>
-                  </Form.Item>
-                )}
-              </>
+                  {featureList}
+                </Select>
+              </Form.Item>
             )}
           </Form>
           <Table

@@ -13,7 +13,10 @@ export function ColorPickerOnly({ initColor, setting, disAplpha }) {
       <Space direction="horizontal" size="small">
         <div className={styles.swatch} onClick={() => setShow(!show)}>
           <div
-            style={{ background: color.toRgbString() }}
+            style={{
+              background: color.toRgbString(),
+              boxShadow: '1px 1px rgba(100, 100, 100, 0.25)',
+            }}
             className={styles.color}
           />
         </div>
@@ -46,7 +49,10 @@ export default function ColorPicker({ initColor, setting, layer }) {
       <Space direction="horizontal" size="small">
         <div className={styles.swatch} onClick={() => setShow(!show)}>
           <div
-            style={{ background: color.toRgbString() }}
+            style={{
+              background: color.toRgbString(),
+              boxShadow: '1px 1px rgba(100, 100, 100, 0.25)',
+            }}
             className={styles.color}
           />
         </div>

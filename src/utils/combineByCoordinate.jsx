@@ -1,14 +1,9 @@
-import {
-  calcMiddle,
-  divideMiddle,
-  gradientPos,
-  normalizeData,
-} from './calculator';
+import { calcMiddle, divideMiddle, gradientPos } from './calculator';
 import featureStyles from './featureStyles';
 import { colorGradient } from './generator';
 
 export default function combineByCoordinate(layer, vectorSource, matname) {
-  const dataMap = {};
+  const dataMap = layer.get('dataMap') || {};
   vectorSource.forEachFeature((feature) => {
     const coordinate = feature.getGeometry().getCoordinates();
     const lryFeature = layer.getSource().getFeaturesAtCoordinate(coordinate)[0];
@@ -20,6 +15,7 @@ export default function combineByCoordinate(layer, vectorSource, matname) {
       dataMap[fname].push(parseFloat(feature.get('info').data));
     }
   });
+  layer.set('dataMap', { ...dataMap });
 
   const allMiddles = [];
   Object.keys(dataMap).forEach((key) => {
